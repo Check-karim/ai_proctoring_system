@@ -1,0 +1,45 @@
+---
+description: AI Proctoring System development standards and conventions
+alwaysApply: true
+---
+
+# AI Proctoring System Guidelines
+
+## Technology Stack
+- **Backend**: Python Flask 3.0
+- **Database**: MySQL with Flask-MySQLdb
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **AI/ML**: face-recognition library, OpenCV
+
+## Code Conventions
+
+### Python/Flask
+- Use Flask blueprints for modular routing
+- Follow PEP 8 style guidelines
+- Use decorators for route protection (`@login_required`)
+- Database queries use parameterized queries to prevent SQL injection
+
+### Templates (Jinja2)
+- Extend from `base.html` for consistent layout
+- Use template blocks: `content`, `styles`, `scripts`
+- Flash messages for user feedback
+
+### CSS
+- Use CSS custom properties for theming
+- Mobile-first responsive design
+- BEM-like naming convention
+
+## Database
+- MySQL database named `ai_proctoring`
+- Plain text passwords (demo only)
+- Tables: users, exams, exam_sessions, proctoring_logs
+
+## User Roles
+1. **Admin**: username `admin`, password `admin`
+2. **User**: Self-registration required
+
+## Key Features
+- Facial recognition for identity verification
+- Real-time exam monitoring (live monitor polls every 5s and refreshes the session table)
+- Notifications when AI suspects something: both admin and user receive on-screen toasts when a warning/critical proctoring event is logged (tab switch, window blur, face issues, etc.); user sees “An issue has been recorded. The administrator has been notified.”; admin sees student name, exam, and incident description
+- Analytics and reporting dashboard

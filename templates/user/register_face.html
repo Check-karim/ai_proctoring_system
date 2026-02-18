@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Register Face - AI Proctoring System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container" style="max-width: 700px;">
+        <div class="dashboard-header" style="text-align: center;">
+            <h1 class="dashboard-title">Register Your Face</h1>
+            <p class="dashboard-subtitle">
+                Your face will be used for identity verification during exams
+            </p>
+        </div>
+        
+        <div class="card" style="text-align: center;">
+            <div style="margin-bottom: 2rem;">
+                <div style="position: relative; display: inline-block; border-radius: var(--border-radius-lg); overflow: hidden; border: 3px solid var(--primary-color);">
+                    <video id="webcam" autoplay playsinline muted style="width: 100%; max-width: 480px; display: block;"></video>
+                    <canvas id="captureCanvas" style="display: none;"></canvas>
+                </div>
+            </div>
+            
+            <div id="capturedPreview" style="display: none; margin-bottom: 2rem;">
+                <h3>Captured Image</h3>
+                <img id="previewImage" style="max-width: 320px; border-radius: var(--border-radius); border: 2px solid var(--success-color);">
+            </div>
+            
+            <div style="margin-bottom: 2rem;">
+                <h3>Instructions</h3>
+                <ul style="list-style: none; text-align: left; max-width: 400px; margin: 0 auto;">
+                    <li style="padding: 0.5rem 0; color: var(--text-secondary);">
+                        ✓ Ensure your face is clearly visible
+                    </li>
+                    <li style="padding: 0.5rem 0; color: var(--text-secondary);">
+                        ✓ Look directly at the camera
+                    </li>
+                    <li style="padding: 0.5rem 0; color: var(--text-secondary);">
+                        ✓ Make sure lighting is adequate
+                    </li>
+                    <li style="padding: 0.5rem 0; color: var(--text-secondary);">
+                        ✓ Remove glasses or face coverings if possible
+                    </li>
+                </ul>
+            </div>
+            
+            <div id="messageBox" style="display: none; margin-bottom: 1rem;"></div>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button id="captureBtn" class="btn btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Capture Photo
+                </button>
+                <button id="retakeBtn" class="btn btn-secondary btn-lg" style="display: none;">
+                    Retake
+                </button>
+                <button id="saveBtn" class="btn btn-success btn-lg" style="display: none;">
+                    Save Face
+                </button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let stream;
+    let capturedImage = null;
+    
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('captureCanvas');
+    const preview = document.getElementById('previewImage');
+    const previewContainer = document.getElementById('capturedPreview');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const messageBox = document.getElementById('messageBox');
+    
+    // Initialize webcam
+    async function initWebcam() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user', width: 640, height: 480 } 
+            });
+            video.srcObject = stream;
+        } catch (err) {
+            showMessage('Camera access denied. Please allow camera access.', 'error');
+            console.error('Webcam error:', err);
+        }
+    }
+    
+    // Capture photo
+    function capturePhoto() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        capturedImage = canvas.toDataURL('image/jpeg', 0.9);
+        preview.src = capturedImage;
+        
+        // Update UI
+        video.style.display = 'none';
+        previewContainer.style.display = 'block';
+        captureBtn.style.display = 'none';
+        retakeBtn.style.display = 'inline-flex';
+        saveBtn.style.display = 'inline-flex';
+    }
+    
+    // Retake photo
+    function retakePhoto() {
+        capturedImage = null;
+        video.style.display = 'block';
+        previewContainer.style.display = 'none';
+        captureBtn.style.display = 'inline-flex';
+        retakeBtn.style.display = 'none';
+        saveBtn.style.display = 'none';
+        hideMessage();
+    }
+    
+    // Save face
+    async function saveFace() {
+        if (!capturedImage) {
+            showMessage('Please capture a photo first.', 'error');
+            return;
+        }
+        
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        
+        try {
+            const response = await fetch('{{ url_for("register_face") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: capturedImage })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessage('Face registered successfully! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("user_dashboard") }}';
+                }, 2000);
+            } else {
+                showMessage(result.message || 'Failed to register face.', 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Face';
+            }
+        } catch (err) {
+            showMessage('An error occurred. Please try again.', 'error');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Face';
+            console.error('Save error:', err);
+        }
+    }
+    
+    // Show message
+    function showMessage(message, type) {
+        messageBox.className = `alert alert-${type}`;
+        messageBox.textContent = message;
+        messageBox.style.display = 'block';
+    }
+    
+    // Hide message
+    function hideMessage() {
+        messageBox.style.display = 'none';
+    }
+    
+    // Event listeners
+    captureBtn.addEventListener('click', capturePhoto);
+    retakeBtn.addEventListener('click', retakePhoto);
+    saveBtn.addEventListener('click', saveFace);
+    
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', initWebcam);
+</script>
+{% endblock %}

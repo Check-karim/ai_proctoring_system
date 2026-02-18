@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Login - AI Proctoring System{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card fade-in">
+            <div class="auth-header">
+                <a href="{{ url_for('index') }}" class="auth-logo">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="var(--primary-color)">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    AI Proctor
+                </a>
+                <h2 class="auth-title">Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to continue to your dashboard</p>
+            </div>
+            
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Enter your username"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Enter your password"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Sign In
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p style="margin: 0; color: var(--text-secondary);">
+                    Don't have an account? 
+                    <a href="{{ url_for('register') }}">Create one</a>
+                </p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('index') }}" style="color: var(--text-secondary);">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

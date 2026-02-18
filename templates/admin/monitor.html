@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Live Monitor - AI Proctoring System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 class="dashboard-title">Live Monitoring</h1>
+                    <p class="dashboard-subtitle">Monitor ongoing exam sessions in real-time</p>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span id="lastUpdate" style="color: var(--text-muted); font-size: 0.875rem;">
+                        Last updated: just now
+                    </span>
+                    <button id="refreshBtn" class="btn btn-secondary btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"/>
+                            <path d="M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Sessions Count -->
+        <div class="card" style="margin-bottom: 2rem; background: var(--gradient-primary);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="color: white; margin-bottom: 0.25rem;">
+                        <span id="activeCount">{{ active_sessions|length }}</span> Active Sessions
+                    </h2>
+                    <p style="color: rgba(255,255,255,0.8); margin: 0;">Students currently taking exams</p>
+                </div>
+                <div style="font-size: 3rem; opacity: 0.5;">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sessions Table -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Active Exam Sessions</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table" id="sessionsTable">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Exam</th>
+                                <th>Started</th>
+                                <th>Duration</th>
+                                <th>Face Status</th>
+                                <th>Warnings</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsBody">
+                            {% for session in active_sessions %}
+                            <tr data-session-id="{{ session.id }}">
+                                <td>
+                                    <div>
+                                        <strong>{{ session.full_name }}</strong>
+                                        <br>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);">@{{ session.username }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ session.exam_title }}</td>
+                                <td>
+                                    <span style="font-size: 0.9rem;">
+                                        {{ session.start_time.strftime('%H:%M:%S') }}
+                                    </span>
+                                </td>
+                                <td class="session-duration" data-start="{{ session.start_time.isoformat() }}">
+                                    --:--
+                                </td>
+                                <td>
+                                    {% if session.face_verified %}
+                                        <span class="badge badge-success">Verified</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.warning_count == 0 %}
+                                        <span class="badge badge-success">{{ session.warning_count }}</span>
+                                    {% elif session.warning_count < 3 %}
+                                        <span class="badge badge-warning">{{ session.warning_count }}</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">{{ session.warning_count }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-info">In Progress</span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('admin_view_session', session_id=session.id) }}" class="btn btn-secondary btn-sm">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr id="noSessionsRow">
+                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                                    <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
+                                    <p style="margin: 0;">No active exam sessions at the moment</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">Status Legend</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="badge badge-success">Verified</span>
+                        <span style="color: var(--text-secondary);">Face verified successfully</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="badge badge-warning">Pending</span>
+                        <span style="color: var(--text-secondary);">Awaiting face verification</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="badge badge-danger">3+</span>
+                        <span style="color: var(--text-secondary);">High warning count</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Update session durations (for rows that have data-start)
+    function updateDurations() {
+        document.querySelectorAll('.session-duration[data-start]').forEach(el => {
+            const startTime = new Date(el.dataset.start);
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000);
+            
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+            
+            if (hours > 0) {
+                el.textContent = hours + ':' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+            } else {
+                el.textContent = minutes + ':' + String(seconds).padStart(2, '0');
+            }
+        });
+    }
+    
+    function formatDuration(startTimeStr) {
+        const start = new Date(startTimeStr);
+        const diff = Math.floor((Date.now() - start) / 1000);
+        const h = Math.floor(diff / 3600);
+        const m = Math.floor((diff % 3600) / 60);
+        const s = diff % 60;
+        if (h > 0) return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        return m + ':' + String(s).padStart(2, '0');
+    }
+    
+    function buildSessionsTable(sessions) {
+        var tbody = document.getElementById('sessionsBody');
+        if (!tbody) return;
+        if (sessions.length === 0) {
+            tbody.innerHTML = '<tr id="noSessionsRow"><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem;"><div style="font-size: 3rem; margin-bottom: 1rem;">📋</div><p style="margin: 0;">No active exam sessions at the moment</p></td></tr>';
+            return;
+        }
+        var html = '';
+        sessions.forEach(function(s) {
+            var startTime = s.start_time || '';
+            var startIso = startTime.replace(' ', 'T');
+            var faceBadge = s.face_verified ? '<span class="badge badge-success">Verified</span>' : '<span class="badge badge-warning">Pending</span>';
+            var warnClass = s.warning_count === 0 ? 'badge-success' : (s.warning_count < 3 ? 'badge-warning' : 'badge-danger');
+            var viewUrl = '/admin/session/' + s.id;
+            html += '<tr data-session-id="' + s.id + '">' +
+                '<td><div><strong>' + (s.full_name || '') + '</strong><br><span style="font-size: 0.8rem; color: var(--text-muted);">@' + (s.username || '') + '</span></div></td>' +
+                '<td>' + (s.exam_title || '') + '</td>' +
+                '<td><span style="font-size: 0.9rem;">' + (startTime ? startTime.split(' ')[1] || startTime : '--') + '</span></td>' +
+                '<td class="session-duration" data-start="' + startIso + '">' + (startIso ? formatDuration(startIso) : '--:--') + '</td>' +
+                '<td>' + faceBadge + '</td>' +
+                '<td><span class="badge ' + warnClass + '">' + (s.warning_count || 0) + '</span></td>' +
+                '<td><span class="badge badge-info">In Progress</span></td>' +
+                '<td><a href="' + viewUrl + '" class="btn btn-secondary btn-sm">View</a></td>' +
+                '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+    
+    // Fetch active sessions and refresh table
+    async function refreshSessions() {
+        try {
+            var response = await fetch('/api/active_sessions');
+            var sessions = await response.json();
+            
+            document.getElementById('activeCount').textContent = sessions.length;
+            document.getElementById('lastUpdate').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+            
+            buildSessionsTable(sessions);
+            updateDurations();
+        } catch (err) {
+            console.error('Failed to refresh sessions:', err);
+        }
+    }
+    
+    // Poll proctoring alerts and show toasts to admin (only new alerts since page load)
+    var lastAlertId = 0;
+    var alertsFirstPoll = true;
+    async function pollProctoringAlerts() {
+        try {
+            var since = new Date(Date.now() - 120000).toISOString().slice(0, 19).replace('T', ' ');
+            var response = await fetch('/api/proctoring_alerts?since=' + encodeURIComponent(since));
+            var alerts = await response.json();
+            alerts.forEach(function(a) {
+                if (a.id > lastAlertId) {
+                    if (alertsFirstPoll) {
+                        lastAlertId = Math.max(lastAlertId, a.id);
+                    } else if (typeof window.showProctoringToast === 'function') {
+                        lastAlertId = Math.max(lastAlertId, a.id);
+                        var msg = (a.full_name || a.username) + ' – ' + (a.exam_title || 'Exam') + ': ' + (a.description || a.event_type);
+                        window.showProctoringToast(msg, a.severity);
+                    }
+                }
+            });
+            if (alertsFirstPoll) {
+                alerts.forEach(function(a) { if (a.id > lastAlertId) lastAlertId = a.id; });
+                alertsFirstPoll = false;
+            }
+        } catch (err) {
+            console.error('Failed to poll alerts:', err);
+        }
+    }
+    
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        refreshSessions();
+    });
+    
+    setInterval(updateDurations, 1000);
+    setInterval(refreshSessions, 5000);
+    setInterval(pollProctoringAlerts, 10000);
+    
+    refreshSessions();
+    pollProctoringAlerts();
+</script>
+{% endblock %}

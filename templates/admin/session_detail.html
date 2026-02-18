@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Session Details - AI Proctoring System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container" style="max-width: 1000px;">
+        <!-- Back Link -->
+        <div style="margin-bottom: 1rem;">
+            <a href="{{ url_for('admin_monitor') }}" style="color: var(--text-secondary);">
+                ← Back to Monitor
+            </a>
+        </div>
+        
+        <!-- Session Header -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1 style="margin-bottom: 0.5rem;">{{ session.exam_title }}</h1>
+                    <p style="color: var(--text-secondary); margin: 0;">Session #{{ session.id }}</p>
+                </div>
+                <div>
+                    {% if session.status == 'in_progress' %}
+                        <span class="badge badge-info" style="font-size: 1rem; padding: 0.5rem 1rem;">In Progress</span>
+                    {% elif session.status == 'completed' %}
+                        <span class="badge badge-success" style="font-size: 1rem; padding: 0.5rem 1rem;">Completed</span>
+                    {% elif session.status == 'flagged' %}
+                        <span class="badge badge-warning" style="font-size: 1rem; padding: 0.5rem 1rem;">Flagged</span>
+                    {% elif session.status == 'terminated' %}
+                        <span class="badge badge-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">Terminated</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-2" style="gap: 2rem;">
+            <!-- Student Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Student Information</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600;">
+                            {{ session.full_name[0] }}
+                        </div>
+                        <div>
+                            <h4 style="margin: 0;">{{ session.full_name }}</h4>
+                            <p style="margin: 0; color: var(--text-muted);">@{{ session.username }}</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; gap: 1rem;">
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Email</span>
+                            <p style="margin: 0.25rem 0 0;">{{ session.email }}</p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Face Verified</span>
+                            <p style="margin: 0.25rem 0 0;">
+                                {% if session.face_verified %}
+                                    <span class="badge badge-success">Yes</span>
+                                {% else %}
+                                    <span class="badge badge-warning">No</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Session Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Session Statistics</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Started At</span>
+                            <p style="margin: 0.25rem 0 0; font-weight: 600;">
+                                {{ session.start_time.strftime('%b %d, %Y %H:%M') }}
+                            </p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Ended At</span>
+                            <p style="margin: 0.25rem 0 0; font-weight: 600;">
+                                {{ session.end_time.strftime('%b %d, %Y %H:%M') if session.end_time else 'Ongoing' }}
+                            </p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Score</span>
+                            <p style="margin: 0.25rem 0 0;">
+                                <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">
+                                    {{ session.score }}
+                                </span>
+                                <span style="color: var(--text-muted);">/ {{ session.total_marks }}</span>
+                            </p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Warnings</span>
+                            <p style="margin: 0.25rem 0 0;">
+                                {% if session.warning_count == 0 %}
+                                    <span class="badge badge-success" style="font-size: 1rem;">{{ session.warning_count }}</span>
+                                {% elif session.warning_count < 3 %}
+                                    <span class="badge badge-warning" style="font-size: 1rem;">{{ session.warning_count }}</span>
+                                {% else %}
+                                    <span class="badge badge-danger" style="font-size: 1rem;">{{ session.warning_count }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Correct Answers</span>
+                            <p style="margin: 0.25rem 0 0; font-weight: 600;">
+                                {{ session.correct_answers }} / {{ session.total_questions }}
+                            </p>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); font-size: 0.875rem;">Accuracy</span>
+                            <p style="margin: 0.25rem 0 0; font-weight: 600;">
+                                {% if session.total_questions > 0 %}
+                                    {{ ((session.correct_answers / session.total_questions) * 100)|round(1) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Proctoring Timeline -->
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">
+                <h3 class="card-title">Proctoring Timeline</h3>
+            </div>
+            <div class="card-body">
+                {% if logs %}
+                    <div style="position: relative; padding-left: 2rem;">
+                        <!-- Timeline line -->
+                        <div style="position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border-color);"></div>
+                        
+                        {% for log in logs %}
+                        <div style="position: relative; padding-bottom: 1.5rem;">
+                            <!-- Timeline dot -->
+                            <div style="position: absolute; left: -2rem; top: 0; width: 18px; height: 18px; border-radius: 50%; 
+                                {% if log.severity == 'critical' %}
+                                    background: var(--danger-color);
+                                {% elif log.severity == 'warning' %}
+                                    background: var(--warning-color);
+                                {% else %}
+                                    background: var(--primary-color);
+                                {% endif %}
+                                border: 3px solid var(--bg-primary);
+                            "></div>
+                            
+                            <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: var(--border-radius-sm); border-left: 3px solid 
+                                {% if log.severity == 'critical' %}
+                                    var(--danger-color);
+                                {% elif log.severity == 'warning' %}
+                                    var(--warning-color);
+                                {% else %}
+                                    var(--primary-color);
+                                {% endif %}
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                    <span style="font-weight: 600;">
+                                        {{ log.event_type|replace('_', ' ')|title }}
+                                    </span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                        {{ log.created_at.strftime('%H:%M:%S') }}
+                                    </span>
+                                </div>
+                                <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                                    {{ log.description or 'No description' }}
+                                </p>
+                                <span class="badge {% if log.severity == 'critical' %}badge-danger{% elif log.severity == 'warning' %}badge-warning{% else %}badge-info{% endif %}" style="margin-top: 0.5rem;">
+                                    {{ log.severity }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No proctoring events recorded for this session
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

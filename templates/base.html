@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Proctoring System{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="{{ url_for('index') }}" class="navbar-brand">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                AI Proctor
+            </a>
+            
+            <button class="navbar-toggle" id="navToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul class="navbar-nav" id="navMenu">
+                <li><a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">Home</a></li>
+                <li><a href="{{ url_for('about') }}" class="nav-link {% if request.endpoint == 'about' %}active{% endif %}">About</a></li>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin() %}
+                        <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link">Dashboard</a></li>
+                        <li><a href="{{ url_for('admin_monitor') }}" class="nav-link">Monitor</a></li>
+                        <li><a href="{{ url_for('admin_reports') }}" class="nav-link">Reports</a></li>
+                    {% else %}
+                        <li><a href="{{ url_for('user_dashboard') }}" class="nav-link">Dashboard</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm">Logout</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}" class="nav-link">Login</a></li>
+                    <li><a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Register</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container" style="padding-top: 90px;">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Proctoring issue toast container (fixed top-right) -->
+    <div id="proctoring-toast-container" class="proctoring-toast-container" aria-live="polite"></div>
+    
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    {% block footer %}
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <div class="footer-brand">AI Proctor</div>
+                    <p style="color: var(--text-secondary);">
+                        Secure and intelligent exam proctoring powered by artificial intelligence.
+                    </p>
+                </div>
+                <div class="footer-links">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="{{ url_for('index') }}">Home</a></li>
+                        <li><a href="{{ url_for('about') }}">About Us</a></li>
+                        {% if not current_user.is_authenticated %}
+                            <li><a href="{{ url_for('login') }}">Login</a></li>
+                            <li><a href="{{ url_for('register') }}">Register</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Features</h4>
+                    <ul>
+                        <li><a href="#">Face Recognition</a></li>
+                        <li><a href="#">Real-time Monitoring</a></li>
+                        <li><a href="#">Analytics</a></li>
+                        <li><a href="#">Secure Exams</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li>support@aiproctor.com</li>
+                        <li>+1 234 567 890</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 AI Proctoring System. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+    
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    // Global: show a proctoring issue notification (for both admin and user)
+    window.showProctoringToast = function(message, severity) {
+        severity = severity || 'warning';
+        var container = document.getElementById('proctoring-toast-container');
+        if (!container) return;
+        var toast = document.createElement('div');
+        toast.className = 'proctoring-toast proctoring-toast-' + severity;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = '<span class="proctoring-toast-message">' + (message || 'An issue was detected during the exam.') + '</span>';
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.classList.add('proctoring-toast-visible');
+        }, 10);
+        setTimeout(function() {
+            toast.classList.remove('proctoring-toast-visible');
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 6000);
+    };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

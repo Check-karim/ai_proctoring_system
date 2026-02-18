@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI Proctoring System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container">
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Welcome, {{ current_user.full_name }}</h1>
+            <p class="dashboard-subtitle">Your exam dashboard and progress overview</p>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="stats-cards">
+            <div class="card stat-card">
+                <div class="stat-card-icon primary">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                </div>
+                <div class="stat-card-info">
+                    <h3>{{ exams|length }}</h3>
+                    <p>Available Exams</p>
+                </div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-card-icon success">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="stat-card-info">
+                    <h3>{{ history|selectattr('status', 'equalto', 'completed')|list|length }}</h3>
+                    <p>Completed Exams</p>
+                </div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-card-icon warning">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <div class="stat-card-info">
+                    <h3>{{ alerts|length }}</h3>
+                    <p>Recent Alerts</p>
+                </div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-card-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="stat-card-info">
+                    <h3>{{ 'Registered' if current_user.face_encoding else 'Not Set' }}</h3>
+                    <p>Face Status</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Face Registration Banner -->
+        {% if not current_user.face_encoding %}
+        <div class="card" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05)); border-color: var(--warning-color); margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="color: var(--warning-color); margin-bottom: 0.5rem;">Register Your Face</h3>
+                    <p style="margin: 0;">You need to register your face before taking proctored exams.</p>
+                </div>
+                <a href="{{ url_for('register_face') }}" class="btn btn-primary">
+                    Register Face
+                </a>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="grid grid-2" style="gap: 2rem;">
+            <!-- Available Exams -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Available Exams</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if exams %}
+                            {% for exam in exams %}
+                            <div style="padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+                                    <div>
+                                        <h4 style="margin-bottom: 0.25rem;">{{ exam.title }}</h4>
+                                        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                                            {{ exam.description[:100] }}{% if exam.description|length > 100 %}...{% endif %}
+                                        </p>
+                                        <div style="display: flex; gap: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+                                            <span>⏱ {{ exam.duration_minutes }} mins</span>
+                                            <span>📝 {{ exam.total_marks }} marks</span>
+                                            <span>✓ Pass: {{ exam.passing_marks }}</span>
+                                        </div>
+                                    </div>
+                                    <a href="{{ url_for('take_exam', exam_id=exam.id) }}" class="btn btn-primary btn-sm">
+                                        Start
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No exams available at the moment.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent History & Alerts -->
+            <div>
+                <!-- Exam History -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Exam History</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if history %}
+                            {% for session in history[:5] %}
+                            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <h4 style="font-size: 0.95rem; margin-bottom: 0.25rem;">{{ session.exam_title }}</h4>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                        {{ session.created_at.strftime('%b %d, %Y') }}
+                                    </span>
+                                </div>
+                                <div style="text-align: right;">
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge badge-success">Score: {{ session.score }}</span>
+                                    {% elif session.status == 'in_progress' %}
+                                        <span class="badge badge-info">In Progress</span>
+                                    {% elif session.status == 'flagged' %}
+                                        <span class="badge badge-warning">Flagged</span>
+                                    {% elif session.status == 'terminated' %}
+                                        <span class="badge badge-danger">Terminated</span>
+                                    {% endif %}
+                                    {% if session.status == 'completed' %}
+                                        <br>
+                                        <a href="{{ url_for('view_results', session_id=session.id) }}" style="font-size: 0.8rem;">View Details</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No exam history yet.
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Recent Alerts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Alerts</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if alerts %}
+                            {% for alert in alerts %}
+                            <div style="padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    {% if alert.severity == 'critical' %}
+                                        <span style="color: var(--danger-color);">⚠</span>
+                                    {% else %}
+                                        <span style="color: var(--warning-color);">⚡</span>
+                                    {% endif %}
+                                    <div>
+                                        <p style="margin: 0; font-size: 0.9rem;">{{ alert.description }}</p>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                            {{ alert.created_at.strftime('%b %d, %H:%M') }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No alerts. Keep up the good work!
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var lastAlertId = 0;
+    var firstPoll = true;
+    function pollProctoringAlerts() {
+        fetch('/api/proctoring_alerts')
+            .then(function(r) { return r.json(); })
+            .then(function(alerts) {
+                alerts.forEach(function(a) {
+                    if (a.id > lastAlertId) {
+                        if (firstPoll) {
+                            lastAlertId = Math.max(lastAlertId, a.id);
+                        } else if (typeof window.showProctoringToast === 'function') {
+                            lastAlertId = Math.max(lastAlertId, a.id);
+                            var msg = (a.exam_title || 'Exam') + ': ' + (a.description || a.event_type);
+                            window.showProctoringToast(msg, a.severity);
+                        }
+                    }
+                });
+                if (firstPoll) {
+                    alerts.forEach(function(a) { if (a.id > lastAlertId) lastAlertId = a.id; });
+                    firstPoll = false;
+                }
+            })
+            .catch(function(err) { console.error('Alerts poll:', err); });
+    }
+    setInterval(pollProctoringAlerts, 10000);
+    pollProctoringAlerts();
+})();
+</script>
+{% endblock %}

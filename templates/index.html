@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}AI Proctoring System - Secure Online Examinations{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-content fade-in">
+            <div class="hero-badge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                AI-Powered Proctoring
+            </div>
+            <h1 class="hero-title">Secure Online Examinations with AI Proctoring</h1>
+            <p class="hero-description">
+                Advanced facial recognition and behavior monitoring to ensure exam integrity. 
+                Trusted by educators and institutions worldwide for fair and secure assessments.
+            </p>
+            <div class="hero-buttons">
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin() %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary btn-lg">Go to Dashboard</a>
+                    {% else %}
+                        <a href="{{ url_for('user_dashboard') }}" class="btn btn-primary btn-lg">Start Exam</a>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Get Started</a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-lg">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Powerful Features</h2>
+            <p class="section-subtitle">
+                Everything you need for secure and reliable online examinations
+            </p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="card feature-card fade-in">
+                <div class="feature-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Facial Recognition</h3>
+                <p class="feature-description">
+                    Advanced AI-powered facial recognition verifies student identity throughout the exam, 
+                    ensuring the right person takes the test.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.1s;">
+                <div class="feature-icon" style="background: var(--gradient-secondary);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Real-time Monitoring</h3>
+                <p class="feature-description">
+                    Live monitoring capabilities allow administrators to oversee ongoing exams, 
+                    detect suspicious behavior, and maintain exam integrity.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.2s;">
+                <div class="feature-icon" style="background: var(--gradient-accent);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Analytics & Reports</h3>
+                <p class="feature-description">
+                    Comprehensive analytics dashboard provides insights into exam performance, 
+                    completion rates, and proctoring incidents.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.3s;">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Instant Alerts</h3>
+                <p class="feature-description">
+                    Automated warning system alerts users of suspicious activities such as 
+                    tab switching, multiple faces, or face not detected.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.4s;">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Secure Platform</h3>
+                <p class="feature-description">
+                    Enterprise-grade security ensures all exam data is protected. 
+                    Browser lockdown prevents access to external resources.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.5s;">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Easy Exam Management</h3>
+                <p class="feature-description">
+                    Create and manage exams with ease. Add questions, set time limits, 
+                    and configure passing criteria all from one dashboard.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item fade-in">
+                <div class="stat-number">99.9%</div>
+                <div class="stat-label">Accuracy Rate</div>
+            </div>
+            <div class="stat-item fade-in" style="animation-delay: 0.1s;">
+                <div class="stat-number">10K+</div>
+                <div class="stat-label">Exams Proctored</div>
+            </div>
+            <div class="stat-item fade-in" style="animation-delay: 0.2s;">
+                <div class="stat-number">5K+</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-item fade-in" style="animation-delay: 0.3s;">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">Support Available</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="features" style="background: var(--bg-secondary); border-top: 1px solid var(--border-color);">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">
+                Simple steps to get started with AI-powered proctoring
+            </p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="card feature-card fade-in">
+                <div class="feature-icon" style="background: var(--bg-tertiary); color: var(--primary-color);">
+                    <span style="font-size: 1.5rem; font-weight: bold;">1</span>
+                </div>
+                <h3 class="feature-title">Register & Setup</h3>
+                <p class="feature-description">
+                    Create your account and register your face for identity verification. 
+                    Quick and easy setup process.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.1s;">
+                <div class="feature-icon" style="background: var(--bg-tertiary); color: var(--secondary-color);">
+                    <span style="font-size: 1.5rem; font-weight: bold;">2</span>
+                </div>
+                <h3 class="feature-title">Start Your Exam</h3>
+                <p class="feature-description">
+                    Select your exam and begin. Our AI continuously monitors to ensure 
+                    a fair testing environment.
+                </p>
+            </div>
+            
+            <div class="card feature-card fade-in" style="animation-delay: 0.2s;">
+                <div class="feature-icon" style="background: var(--bg-tertiary); color: var(--accent-color);">
+                    <span style="font-size: 1.5rem; font-weight: bold;">3</span>
+                </div>
+                <h3 class="feature-title">Get Results</h3>
+                <p class="feature-description">
+                    Complete your exam and receive instant results. View detailed 
+                    performance analytics and feedback.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="features">
+    <div class="container">
+        <div class="card" style="text-align: center; padding: 4rem 2rem; background: var(--gradient-primary);">
+            <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: white;">Ready to Get Started?</h2>
+            <p style="font-size: 1.25rem; color: rgba(255,255,255,0.9); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Join thousands of students and educators using AI Proctor for secure online examinations.
+            </p>
+            {% if not current_user.is_authenticated %}
+                <div class="hero-buttons" style="justify-content: center;">
+                    <a href="{{ url_for('register') }}" class="btn btn-lg" style="background: white; color: var(--primary-color);">Create Free Account</a>
+                    <a href="{{ url_for('login') }}" class="btn btn-lg" style="border: 2px solid white; color: white;">Login</a>
+                </div>
+            {% else %}
+                <a href="{{ url_for('user_dashboard') }}" class="btn btn-lg" style="background: white; color: var(--primary-color);">Go to Dashboard</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

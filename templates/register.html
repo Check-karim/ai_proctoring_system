@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Register - AI Proctoring System{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card fade-in">
+            <div class="auth-header">
+                <a href="{{ url_for('index') }}" class="auth-logo">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="var(--primary-color)">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    AI Proctor
+                </a>
+                <h2 class="auth-title">Create Account</h2>
+                <p class="auth-subtitle">Join us to take secure online exams</p>
+            </div>
+            
+            <form method="POST" action="{{ url_for('register') }}">
+                <div class="form-group">
+                    <label for="full_name" class="form-label">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="full_name" 
+                        name="full_name" 
+                        class="form-control" 
+                        placeholder="Enter your full name"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Choose a username"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        class="form-control" 
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Create a password"
+                        required
+                        minlength="4"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <input 
+                        type="password" 
+                        id="confirm_password" 
+                        name="confirm_password" 
+                        class="form-control" 
+                        placeholder="Confirm your password"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Create Account
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                <p style="margin: 0; color: var(--text-secondary);">
+                    Already have an account? 
+                    <a href="{{ url_for('login') }}">Sign in</a>
+                </p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('index') }}" style="color: var(--text-secondary);">
+                ← Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Password confirmation validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+        }
+    });
+</script>
+{% endblock %}

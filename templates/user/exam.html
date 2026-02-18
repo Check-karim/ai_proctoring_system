@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} - AI Proctoring System{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block styles %}
+<style>
+    body {
+        overflow-x: hidden;
+    }
+    .navbar {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exam-container">
+    <!-- Exam Header -->
+    <div class="exam-header">
+        <div class="exam-info">
+            <h2>{{ exam.title }}</h2>
+            <p style="margin: 0; color: var(--text-secondary);">
+                {{ questions|length }} Questions | {{ exam.total_marks }} Total Marks | Pass: {{ exam.passing_marks }}
+            </p>
+        </div>
+        <div style="text-align: right;">
+            <div class="exam-timer" id="timer">{{ exam.duration_minutes }}:00</div>
+            <span style="font-size: 0.875rem; color: var(--text-secondary);">Time Remaining</span>
+        </div>
+    </div>
+    
+    <!-- Warning Banner -->
+    <div class="alert alert-warning" id="warningBanner" style="display: none;">
+        <span id="warningMessage">Warning message here</span>
+        <span id="warningCount" style="margin-left: auto; font-weight: bold;"></span>
+    </div>
+    
+    <!-- Questions -->
+    <form id="examForm">
+        <input type="hidden" name="session_id" value="{{ session_id }}">
+        
+        {% for question in questions %}
+        <div class="question-card fade-in" style="animation-delay: {{ loop.index * 0.05 }}s;">
+            <span class="question-number">Question {{ loop.index }} of {{ questions|length }}</span>
+            <p class="question-text">{{ question.question_text }}</p>
+            
+            <ul class="options-list">
+                <li class="option-item">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ question.id }}" value="A">
+                        <span class="option-marker">A</span>
+                        <span class="option-text">{{ question.option_a }}</span>
+                    </label>
+                </li>
+                <li class="option-item">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ question.id }}" value="B">
+                        <span class="option-marker">B</span>
+                        <span class="option-text">{{ question.option_b }}</span>
+                    </label>
+                </li>
+                <li class="option-item">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ question.id }}" value="C">
+                        <span class="option-marker">C</span>
+                        <span class="option-text">{{ question.option_c }}</span>
+                    </label>
+                </li>
+                <li class="option-item">
+                    <label class="option-label">
+                        <input type="radio" name="q_{{ question.id }}" value="D">
+                        <span class="option-marker">D</span>
+                        <span class="option-text">{{ question.option_d }}</span>
+                    </label>
+                </li>
+            </ul>
+        </div>
+        {% endfor %}
+        
+        <!-- Submit Button -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <button type="submit" class="btn btn-primary btn-lg">
+                Submit Exam
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Webcam Container for Proctoring -->
+<div class="webcam-container" id="webcamContainer">
+    <video id="webcam" autoplay playsinline muted></video>
+    <div class="webcam-status" id="webcamStatus">
+        <span id="faceStatus">Initializing camera...</span>
+    </div>
+</div>
+
+<!-- Hidden canvas for capturing frames -->
+<canvas id="captureCanvas" style="display: none;"></canvas>
+
+<!-- Result Modal -->
+<div id="resultModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 500px; width: 90%; text-align: center; padding: 3rem;">
+        <div id="resultContent"></div>
+        <a href="{{ url_for('user_dashboard') }}" class="btn btn-primary" style="margin-top: 1.5rem;">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sessionId = {{ session_id }};
+    const durationMinutes = {{ exam.duration_minutes }};
+    let warningCount = 0;
+    const maxWarnings = 3;
+    let timerInterval;
+    let faceCheckInterval;
+    
+    // Timer
+    function startTimer() {
+        let totalSeconds = durationMinutes * 60;
+        const timerEl = document.getElementById('timer');
+        
+        timerInterval = setInterval(() => {
+            totalSeconds--;
+            
+            if (totalSeconds <= 0) {
+                clearInterval(timerInterval);
+                submitExam();
+                return;
+            }
+            
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Warning colors
+            if (totalSeconds <= 60) {
+                timerEl.classList.add('danger');
+            } else if (totalSeconds <= 300) {
+                timerEl.classList.add('warning');
+            }
+        }, 1000);
+    }
+    
+    // Webcam setup
+    async function setupWebcam() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user', width: 320, height: 240 } 
+            });
+            const video = document.getElementById('webcam');
+            video.srcObject = stream;
+            document.getElementById('faceStatus').textContent = 'Camera active';
+            document.getElementById('webcamContainer').style.borderColor = 'var(--success-color)';
+            
+            // Start periodic face verification
+            startFaceCheck();
+        } catch (err) {
+            console.error('Webcam error:', err);
+            document.getElementById('faceStatus').textContent = 'Camera error';
+            document.getElementById('webcamContainer').classList.add('danger');
+            showWarning('Camera access denied or not available');
+        }
+    }
+    
+    // Capture frame and verify face
+    function captureFrame() {
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('captureCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        return canvas.toDataURL('image/jpeg', 0.8);
+    }
+    
+    // Start face verification checks
+    function startFaceCheck() {
+        faceCheckInterval = setInterval(async () => {
+            const imageData = captureFrame();
+            
+            try {
+                const response = await fetch('/api/verify_face', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: sessionId, image: imageData })
+                });
+                
+                const result = await response.json();
+                
+                if (result.verified) {
+                    document.getElementById('faceStatus').textContent = 'Face verified';
+                    document.getElementById('webcamContainer').style.borderColor = 'var(--success-color)';
+                } else {
+                    document.getElementById('faceStatus').textContent = 'Face not verified';
+                    document.getElementById('webcamContainer').style.borderColor = 'var(--warning-color)';
+                }
+            } catch (err) {
+                console.error('Face verification error:', err);
+            }
+        }, 10000); // Check every 10 seconds
+    }
+    
+    // Log proctoring event (shows notification to user and notifies admin via alerts API)
+    async function logEvent(eventType, description) {
+        try {
+            await fetch('/api/log_event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    session_id: sessionId, 
+                    event_type: eventType,
+                    description: description 
+                })
+            });
+            // Notify user that an issue was recorded and admin is notified
+            if (typeof window.showProctoringToast === 'function') {
+                var severity = (eventType === 'face_mismatch' || eventType === 'multiple_faces') ? 'critical' : 'warning';
+                window.showProctoringToast('An issue has been recorded. The administrator has been notified.', severity);
+            }
+        } catch (err) {
+            console.error('Failed to log event:', err);
+        }
+    }
+    
+    // Show warning (banner + log event; notification to admin is sent via logEvent)
+    function showWarning(message) {
+        warningCount++;
+        const banner = document.getElementById('warningBanner');
+        document.getElementById('warningMessage').textContent = message;
+        document.getElementById('warningCount').textContent = `Warning ${warningCount}/${maxWarnings}`;
+        banner.style.display = 'flex';
+        
+        if (warningCount >= maxWarnings) {
+            if (typeof window.showProctoringToast === 'function') {
+                window.showProctoringToast('Maximum warnings reached. Your exam has been terminated.', 'critical');
+            }
+            alert('Maximum warnings reached. Your exam has been terminated.');
+            window.location.href = '{{ url_for("user_dashboard") }}';
+        }
+        
+        setTimeout(() => {
+            banner.style.display = 'none';
+        }, 5000);
+    }
+    
+    // Detect tab switching
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            logEvent('tab_switch', 'User switched to another tab');
+            showWarning('Tab switching detected! Please stay on the exam page.');
+        }
+    });
+    
+    // Detect window blur
+    window.addEventListener('blur', () => {
+        logEvent('window_blur', 'User clicked outside the exam window');
+        showWarning('Focus lost! Please keep the exam window in focus.');
+    });
+    
+    // Prevent right-click
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showWarning('Right-click is disabled during the exam.');
+    });
+    
+    // Prevent keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'u', 's', 'a'].includes(e.key.toLowerCase())) {
+            e.preventDefault();
+            showWarning('Keyboard shortcuts are disabled during the exam.');
+        }
+    });
+    
+    // Submit exam
+    async function submitExam() {
+        clearInterval(timerInterval);
+        clearInterval(faceCheckInterval);
+        
+        const formData = new FormData(document.getElementById('examForm'));
+        const answers = {};
+        
+        for (let [key, value] of formData.entries()) {
+            if (key.startsWith('q_')) {
+                const questionId = key.replace('q_', '');
+                answers[questionId] = value;
+            }
+        }
+        
+        try {
+            const response = await fetch('/submit_exam', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId, answers: answers })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showResult(result);
+            } else {
+                alert('Failed to submit exam: ' + result.message);
+            }
+        } catch (err) {
+            console.error('Submit error:', err);
+            alert('Failed to submit exam. Please try again.');
+        }
+    }
+    
+    // Show result modal
+    function showResult(result) {
+        const modal = document.getElementById('resultModal');
+        const content = document.getElementById('resultContent');
+        
+        const passed = result.passed;
+        const scoreClass = passed ? 'passed' : 'failed';
+        const statusText = passed ? 'Congratulations! You Passed!' : 'Sorry, You Did Not Pass';
+        const statusIcon = passed ? '🎉' : '😔';
+        
+        content.innerHTML = `
+            <div style="font-size: 4rem; margin-bottom: 1rem;">${statusIcon}</div>
+            <h2 style="margin-bottom: 0.5rem;">${statusText}</h2>
+            <div class="results-score ${scoreClass}" style="font-size: 4rem; margin: 1rem 0;">
+                ${result.score}
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 0;">
+                You answered ${result.correct} out of ${result.total} questions correctly.
+            </p>
+        `;
+        
+        modal.style.display = 'flex';
+    }
+    
+    // Form submit handler
+    document.getElementById('examForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        if (confirm('Are you sure you want to submit your exam?')) {
+            submitExam();
+        }
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        startTimer();
+        setupWebcam();
+        
+        // Warn before leaving
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+    });
+</script>
+{% endblock %}

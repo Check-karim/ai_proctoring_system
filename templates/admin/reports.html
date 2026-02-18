@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics & Reports - AI Proctoring System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container">
+        <!-- Header -->
+        <div class="dashboard-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div>
+                <h1 class="dashboard-title">Analytics & Reports</h1>
+                <p class="dashboard-subtitle">Comprehensive insights and statistical reports</p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <a href="{{ url_for('admin_reports_export_excel') }}" class="btn btn-success btn-sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.35rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Excel
+                </a>
+                <a href="{{ url_for('admin_reports_export_pdf') }}" class="btn btn-danger btn-sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.35rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download PDF
+                </a>
+            </div>
+        </div>
+        
+        <!-- Daily Statistics Chart -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">Exam Activity (Last 7 Days)</h3>
+            </div>
+            <div style="padding: 1rem;">
+                {% if daily_stats %}
+                    <div style="display: flex; align-items: flex-end; gap: 1rem; height: 200px; padding: 1rem 0;">
+                        {% for stat in daily_stats %}
+                            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                                <div style="width: 100%; display: flex; flex-direction: column; gap: 2px; height: 150px; justify-content: flex-end;">
+                                    <!-- Completed -->
+                                    <div style="background: var(--success-color); height: {{ (stat.completed or 0) * 15 }}px; border-radius: 4px 4px 0 0;" title="Completed: {{ stat.completed or 0 }}"></div>
+                                    <!-- Flagged -->
+                                    <div style="background: var(--danger-color); height: {{ (stat.flagged or 0) * 15 }}px;" title="Flagged: {{ stat.flagged or 0 }}"></div>
+                                </div>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">
+                                    {{ stat.date.strftime('%b %d') }}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div style="display: flex; gap: 2rem; justify-content: center; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 16px; height: 16px; background: var(--success-color); border-radius: 4px;"></div>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Completed</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="width: 16px; height: 16px; background: var(--danger-color); border-radius: 4px;"></div>
+                            <span style="font-size: 0.875rem; color: var(--text-secondary);">Flagged/Terminated</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <p style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                        No data available for the selected period
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="grid grid-2" style="gap: 2rem; margin-top: 2rem;">
+            <!-- Incident Types -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Proctoring Incidents by Type</h3>
+                </div>
+                <div style="padding: 1rem;">
+                    {% if incident_types %}
+                        {% set max_count = incident_types[0].count if incident_types else 1 %}
+                        {% for incident in incident_types %}
+                        <div style="margin-bottom: 1rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                                <span style="font-size: 0.875rem;">{{ incident.event_type|replace('_', ' ')|title }}</span>
+                                <span style="font-size: 0.875rem; color: var(--text-muted);">{{ incident.count }}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill {% if 'critical' in incident.event_type or 'mismatch' in incident.event_type %}danger{% elif 'warning' in incident.event_type or 'switch' in incident.event_type %}warning{% else %}{% endif %}" 
+                                     style="width: {{ (incident.count / max_count * 100)|round }}%;"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            No incidents recorded
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Top Performing Exams -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">Top Performing Exams</h3>
+                </div>
+                <div style="padding: 1rem;">
+                    {% if top_exams %}
+                        {% for exam in top_exams %}
+                        <div style="padding: 1rem 0; border-bottom: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h4 style="margin: 0 0 0.25rem 0; font-size: 0.95rem;">{{ exam.title }}</h4>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">
+                                        {{ exam.attempts }} attempts
+                                    </span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 1.25rem; font-weight: 600; color: var(--primary-color);">
+                                        {{ exam.avg_score|round(1) if exam.avg_score else 'N/A' }}
+                                    </div>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">Avg Score</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary);">
+                                <span>Highest: {{ exam.highest_score if exam.highest_score else 'N/A' }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            No exam data available
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Performance -->
+        <div class="chart-container" style="margin-top: 2rem;">
+            <div class="chart-header">
+                <h3 class="chart-title">Top User Performance</h3>
+            </div>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>User</th>
+                            <th>Exams Taken</th>
+                            <th>Average Score</th>
+                            <th>Total Warnings</th>
+                            <th>Performance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in user_performance %}
+                        <tr>
+                            <td>
+                                <div style="width: 30px; height: 30px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem;">
+                                    {{ loop.index }}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>{{ user.full_name }}</strong>
+                                    <br>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">@{{ user.username }}</span>
+                                </div>
+                            </td>
+                            <td>{{ user.exams_taken }}</td>
+                            <td>
+                                <span style="font-weight: 600; color: var(--primary-color);">
+                                    {{ user.avg_score|round(1) if user.avg_score else 'N/A' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if (user.total_warnings or 0) == 0 %}
+                                    <span class="badge badge-success">{{ user.total_warnings or 0 }}</span>
+                                {% elif (user.total_warnings or 0) < 5 %}
+                                    <span class="badge badge-warning">{{ user.total_warnings or 0 }}</span>
+                                {% else %}
+                                    <span class="badge badge-danger">{{ user.total_warnings or 0 }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="progress-bar" style="width: 100px;">
+                                    {% set perf = (user.avg_score or 0) %}
+                                    <div class="progress-fill {% if perf >= 70 %}success{% elif perf >= 40 %}warning{% else %}danger{% endif %}" 
+                                         style="width: {{ perf }}%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                No user performance data available
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="grid grid-3" style="gap: 1.5rem; margin-top: 2rem;">
+            <div class="card" style="text-align: center; padding: 2rem;">
+                <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.5rem;">
+                    {{ daily_stats|sum(attribute='total_exams') if daily_stats else 0 }}
+                </div>
+                <p style="margin: 0; color: var(--text-secondary);">Total Exams This Week</p>
+            </div>
+            <div class="card" style="text-align: center; padding: 2rem;">
+                <div style="font-size: 2.5rem; font-weight: 700; color: var(--success-color); margin-bottom: 0.5rem;">
+                    {{ daily_stats|sum(attribute='completed') if daily_stats else 0 }}
+                </div>
+                <p style="margin: 0; color: var(--text-secondary);">Completed Exams</p>
+            </div>
+            <div class="card" style="text-align: center; padding: 2rem;">
+                <div style="font-size: 2.5rem; font-weight: 700; color: var(--danger-color); margin-bottom: 0.5rem;">
+                    {{ daily_stats|sum(attribute='flagged') if daily_stats else 0 }}
+                </div>
+                <p style="margin: 0; color: var(--text-secondary);">Flagged/Terminated</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
