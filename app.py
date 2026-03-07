@@ -1020,6 +1020,229 @@ def admin_reports_export_pdf():
     return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=filename)
 
 
+@app.route('/admin/exams')
+@login_required
+@admin_required
+def admin_exams():
+    """List and manage all exams"""
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT e.*, u.full_name as creator_name,
+               COUNT(DISTINCT es.id) as attempt_count,
+               COUNT(DISTINCT q.id) as question_count
+        FROM exams e
+        LEFT JOIN users u ON e.created_by = u.id
+        LEFT JOIN exam_sessions es ON e.id = es.exam_id
+        LEFT JOIN questions q ON e.id = q.exam_id
+        GROUP BY e.id
+        ORDER BY e.created_at DESC
+    """)
+    exams = cur.fetchall()
+    cur.close()
+    return render_template('admin/exams.html', exams=exams)
+
+
+@app.route('/admin/exams/create', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_create_exam():
+    """Create a new exam with questions"""
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        duration_minutes = request.form.get('duration_minutes', 60, type=int)
+        total_marks = request.form.get('total_marks', 100, type=int)
+        passing_marks = request.form.get('passing_marks', 40, type=int)
+        is_active = 'is_active' in request.form
+
+        if not title:
+            flash('Exam title is required.', 'error')
+            return render_template('admin/create_exam.html')
+
+        if passing_marks > total_marks:
+            flash('Passing marks cannot exceed total marks.', 'error')
+            return render_template('admin/create_exam.html')
+
+        questions_data = []
+        q_index = 0
+        while True:
+            q_text = request.form.get(f'questions[{q_index}][text]')
+            if q_text is None:
+                break
+            q_text = q_text.strip()
+            opt_a = request.form.get(f'questions[{q_index}][option_a]', '').strip()
+            opt_b = request.form.get(f'questions[{q_index}][option_b]', '').strip()
+            opt_c = request.form.get(f'questions[{q_index}][option_c]', '').strip()
+            opt_d = request.form.get(f'questions[{q_index}][option_d]', '').strip()
+            correct = request.form.get(f'questions[{q_index}][correct]', 'A')
+            marks = request.form.get(f'questions[{q_index}][marks]', 1, type=int)
+
+            if q_text and opt_a and opt_b and opt_c and opt_d:
+                questions_data.append({
+                    'text': q_text, 'option_a': opt_a, 'option_b': opt_b,
+                    'option_c': opt_c, 'option_d': opt_d,
+                    'correct': correct, 'marks': marks
+                })
+            q_index += 1
+
+        if not questions_data:
+            flash('At least one complete question is required.', 'error')
+            return render_template('admin/create_exam.html')
+
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            INSERT INTO exams (title, description, duration_minutes, total_marks, passing_marks, is_active, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (title, description, duration_minutes, total_marks, passing_marks, is_active, current_user.id))
+        exam_id = cur.lastrowid
+
+        for q in questions_data:
+            cur.execute("""
+                INSERT INTO questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (exam_id, q['text'], q['option_a'], q['option_b'], q['option_c'], q['option_d'], q['correct'], q['marks']))
+
+        mysql.connection.commit()
+        cur.close()
+
+        flash(f'Exam "{title}" created successfully with {len(questions_data)} questions.', 'success')
+        return redirect(url_for('admin_exams'))
+
+    return render_template('admin/create_exam.html')
+
+
+@app.route('/admin/exams/<int:exam_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_edit_exam(exam_id):
+    """Edit an existing exam and its questions"""
+    cur = mysql.connection.cursor()
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        duration_minutes = request.form.get('duration_minutes', 60, type=int)
+        total_marks = request.form.get('total_marks', 100, type=int)
+        passing_marks = request.form.get('passing_marks', 40, type=int)
+        is_active = 'is_active' in request.form
+
+        if not title:
+            flash('Exam title is required.', 'error')
+            return redirect(url_for('admin_edit_exam', exam_id=exam_id))
+
+        if passing_marks > total_marks:
+            flash('Passing marks cannot exceed total marks.', 'error')
+            return redirect(url_for('admin_edit_exam', exam_id=exam_id))
+
+        questions_data = []
+        q_index = 0
+        while True:
+            q_text = request.form.get(f'questions[{q_index}][text]')
+            if q_text is None:
+                break
+            q_text = q_text.strip()
+            opt_a = request.form.get(f'questions[{q_index}][option_a]', '').strip()
+            opt_b = request.form.get(f'questions[{q_index}][option_b]', '').strip()
+            opt_c = request.form.get(f'questions[{q_index}][option_c]', '').strip()
+            opt_d = request.form.get(f'questions[{q_index}][option_d]', '').strip()
+            correct = request.form.get(f'questions[{q_index}][correct]', 'A')
+            marks = request.form.get(f'questions[{q_index}][marks]', 1, type=int)
+
+            if q_text and opt_a and opt_b and opt_c and opt_d:
+                questions_data.append({
+                    'text': q_text, 'option_a': opt_a, 'option_b': opt_b,
+                    'option_c': opt_c, 'option_d': opt_d,
+                    'correct': correct, 'marks': marks
+                })
+            q_index += 1
+
+        if not questions_data:
+            flash('At least one complete question is required.', 'error')
+            return redirect(url_for('admin_edit_exam', exam_id=exam_id))
+
+        cur.execute("""
+            UPDATE exams SET title=%s, description=%s, duration_minutes=%s,
+                   total_marks=%s, passing_marks=%s, is_active=%s
+            WHERE id=%s
+        """, (title, description, duration_minutes, total_marks, passing_marks, is_active, exam_id))
+
+        cur.execute("DELETE FROM questions WHERE exam_id = %s", (exam_id,))
+
+        for q in questions_data:
+            cur.execute("""
+                INSERT INTO questions (exam_id, question_text, option_a, option_b, option_c, option_d, correct_option, marks)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (exam_id, q['text'], q['option_a'], q['option_b'], q['option_c'], q['option_d'], q['correct'], q['marks']))
+
+        mysql.connection.commit()
+        cur.close()
+
+        flash(f'Exam "{title}" updated successfully.', 'success')
+        return redirect(url_for('admin_exams'))
+
+    cur.execute("SELECT * FROM exams WHERE id = %s", (exam_id,))
+    exam = cur.fetchone()
+
+    if not exam:
+        flash('Exam not found.', 'error')
+        cur.close()
+        return redirect(url_for('admin_exams'))
+
+    cur.execute("SELECT * FROM questions WHERE exam_id = %s ORDER BY id", (exam_id,))
+    questions = cur.fetchall()
+    cur.close()
+
+    return render_template('admin/edit_exam.html', exam=exam, questions=questions)
+
+
+@app.route('/admin/exams/<int:exam_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_exam(exam_id):
+    """Delete an exam and all its data"""
+    cur = mysql.connection.cursor()
+
+    cur.execute("SELECT title FROM exams WHERE id = %s", (exam_id,))
+    exam = cur.fetchone()
+
+    if not exam:
+        flash('Exam not found.', 'error')
+        cur.close()
+        return redirect(url_for('admin_exams'))
+
+    cur.execute("DELETE FROM exams WHERE id = %s", (exam_id,))
+    mysql.connection.commit()
+    cur.close()
+
+    flash(f'Exam "{exam["title"]}" has been deleted.', 'success')
+    return redirect(url_for('admin_exams'))
+
+
+@app.route('/admin/exams/<int:exam_id>/toggle', methods=['POST'])
+@login_required
+@admin_required
+def admin_toggle_exam(exam_id):
+    """Toggle exam active/inactive status"""
+    cur = mysql.connection.cursor()
+
+    cur.execute("SELECT id, is_active, title FROM exams WHERE id = %s", (exam_id,))
+    exam = cur.fetchone()
+
+    if not exam:
+        flash('Exam not found.', 'error')
+        cur.close()
+        return redirect(url_for('admin_exams'))
+
+    new_status = not exam['is_active']
+    cur.execute("UPDATE exams SET is_active = %s WHERE id = %s", (new_status, exam_id))
+    mysql.connection.commit()
+    cur.close()
+
+    status_text = 'activated' if new_status else 'deactivated'
+    flash(f'Exam "{exam["title"]}" has been {status_text}.', 'success')
+    return redirect(url_for('admin_exams'))
+
+
 @app.route('/admin/session/<int:session_id>')
 @login_required
 @admin_required

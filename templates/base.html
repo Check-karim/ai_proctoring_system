@@ -38,6 +38,7 @@
                 {% if current_user.is_authenticated %}
                     {% if current_user.is_admin() %}
                         <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link">Dashboard</a></li>
+                        <li><a href="{{ url_for('admin_exams') }}" class="nav-link">Exams</a></li>
                         <li><a href="{{ url_for('admin_monitor') }}" class="nav-link">Monitor</a></li>
                         <li><a href="{{ url_for('admin_reports') }}" class="nav-link">Reports</a></li>
                     {% else %}

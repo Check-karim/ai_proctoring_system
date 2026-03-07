@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Create Exam - AI Proctoring System{% endblock %}
+
+{% block styles %}
+<style>
+    .question-block {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+        transition: var(--transition);
+    }
+    .question-block:hover {
+        border-color: var(--primary-color);
+    }
+    .question-block .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .question-block .question-number-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--gradient-primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .remove-question-btn {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--danger-color);
+        border: 1px solid transparent;
+        padding: 0.4rem 0.75rem;
+        border-radius: var(--border-radius-sm);
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .remove-question-btn:hover {
+        background: var(--danger-color);
+        color: white;
+    }
+    .options-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    @media (max-width: 768px) {
+        .options-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .option-input-group {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .option-input-group .option-letter {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-primary);
+        border-radius: 50%;
+        font-weight: 600;
+        font-size: 0.875rem;
+        flex-shrink: 0;
+        color: var(--text-primary);
+    }
+    .option-input-group input[type="text"] {
+        flex: 1;
+    }
+    .question-footer {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        margin-top: 1rem;
+    }
+    .question-footer .form-group {
+        margin-bottom: 0;
+    }
+    #add-question-btn {
+        width: 100%;
+        padding: 1rem;
+        border: 2px dashed var(--border-color);
+        background: transparent;
+        color: var(--text-secondary);
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 1rem;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    #add-question-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="container" style="max-width: 900px;">
+        <div class="dashboard-header">
+            <a href="{{ url_for('admin_exams') }}" style="color: var(--text-secondary); font-size: 0.9rem; display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Exams
+            </a>
+            <h1 class="dashboard-title">Create New Exam</h1>
+            <p class="dashboard-subtitle">Fill in the exam details and add questions</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('admin_create_exam') }}" id="examForm">
+            <!-- Exam Details -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header">
+                    <h3 class="card-title">Exam Details</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label" for="title">Exam Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" required placeholder="e.g. Introduction to Computer Science">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="description">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Brief description of the exam..." style="resize: vertical;"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="duration_minutes">Duration (minutes) *</label>
+                            <input type="number" class="form-control" id="duration_minutes" name="duration_minutes" value="60" min="5" max="300" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="total_marks">Total Marks *</label>
+                            <input type="number" class="form-control" id="total_marks" name="total_marks" value="100" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="passing_marks">Passing Marks *</label>
+                            <input type="number" class="form-control" id="passing_marks" name="passing_marks" value="40" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
+                            <input type="checkbox" name="is_active" checked style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                            <span class="form-label" style="margin-bottom: 0;">Active (visible to students)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Questions -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header">
+                    <h3 class="card-title">Questions</h3>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;" id="questionCount">1 question</span>
+                </div>
+                <div class="card-body">
+                    <div id="questionsContainer">
+                        <div class="question-block" data-index="0">
+                            <div class="question-header">
+                                <span class="question-number-label">Question 1</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Question Text *</label>
+                                <textarea class="form-control" name="questions[0][text]" rows="2" required placeholder="Enter your question..."></textarea>
+                            </div>
+                            <div class="options-grid">
+                                <div class="form-group">
+                                    <div class="option-input-group">
+                                        <span class="option-letter">A</span>
+                                        <input type="text" class="form-control" name="questions[0][option_a]" required placeholder="Option A">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="option-input-group">
+                                        <span class="option-letter">B</span>
+                                        <input type="text" class="form-control" name="questions[0][option_b]" required placeholder="Option B">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="option-input-group">
+                                        <span class="option-letter">C</span>
+                                        <input type="text" class="form-control" name="questions[0][option_c]" required placeholder="Option C">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="option-input-group">
+                                        <span class="option-letter">D</span>
+                                        <input type="text" class="form-control" name="questions[0][option_d]" required placeholder="Option D">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="question-footer">
+                                <div class="form-group" style="flex: 1;">
+                                    <label class="form-label">Correct Answer *</label>
+                                    <select class="form-control" name="questions[0][correct]" required>
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label class="form-label">Marks *</label>
+                                    <input type="number" class="form-control" name="questions[0][marks]" value="1" min="1" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" id="add-question-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add Another Question
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <a href="{{ url_for('admin_exams') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 0.5rem;">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Create Exam
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var questionIndex = 1;
+    var container = document.getElementById('questionsContainer');
+    var addBtn = document.getElementById('add-question-btn');
+    var countEl = document.getElementById('questionCount');
+
+    function updateUI() {
+        var blocks = container.querySelectorAll('.question-block');
+        blocks.forEach(function(block, i) {
+            block.querySelector('.question-number-label').textContent = 'Question ' + (i + 1);
+            var removeBtn = block.querySelector('.remove-question-btn');
+            if (removeBtn) removeBtn.style.display = blocks.length > 1 ? '' : 'none';
+        });
+        var total = blocks.length;
+        countEl.textContent = total + (total === 1 ? ' question' : ' questions');
+    }
+
+    addBtn.addEventListener('click', function() {
+        var idx = questionIndex++;
+        var block = document.createElement('div');
+        block.className = 'question-block fade-in';
+        block.setAttribute('data-index', idx);
+        block.innerHTML =
+            '<div class="question-header">' +
+                '<span class="question-number-label">Question</span>' +
+                '<button type="button" class="remove-question-btn" title="Remove question">' +
+                    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                    'Remove' +
+                '</button>' +
+            '</div>' +
+            '<div class="form-group">' +
+                '<label class="form-label">Question Text *</label>' +
+                '<textarea class="form-control" name="questions[' + idx + '][text]" rows="2" required placeholder="Enter your question..."></textarea>' +
+            '</div>' +
+            '<div class="options-grid">' +
+                '<div class="form-group"><div class="option-input-group"><span class="option-letter">A</span><input type="text" class="form-control" name="questions[' + idx + '][option_a]" required placeholder="Option A"></div></div>' +
+                '<div class="form-group"><div class="option-input-group"><span class="option-letter">B</span><input type="text" class="form-control" name="questions[' + idx + '][option_b]" required placeholder="Option B"></div></div>' +
+                '<div class="form-group"><div class="option-input-group"><span class="option-letter">C</span><input type="text" class="form-control" name="questions[' + idx + '][option_c]" required placeholder="Option C"></div></div>' +
+                '<div class="form-group"><div class="option-input-group"><span class="option-letter">D</span><input type="text" class="form-control" name="questions[' + idx + '][option_d]" required placeholder="Option D"></div></div>' +
+            '</div>' +
+            '<div class="question-footer">' +
+                '<div class="form-group" style="flex:1;"><label class="form-label">Correct Answer *</label><select class="form-control" name="questions[' + idx + '][correct]" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>' +
+                '<div class="form-group" style="flex:1;"><label class="form-label">Marks *</label><input type="number" class="form-control" name="questions[' + idx + '][marks]" value="1" min="1" required></div>' +
+            '</div>';
+        container.appendChild(block);
+
+        var firstBlock = container.querySelector('.question-block');
+        if (firstBlock && !firstBlock.querySelector('.remove-question-btn')) {
+            var header = firstBlock.querySelector('.question-header');
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'remove-question-btn';
+            btn.title = 'Remove question';
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Remove';
+            header.appendChild(btn);
+        }
+
+        updateUI();
+        block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    container.addEventListener('click', function(e) {
+        var btn = e.target.closest('.remove-question-btn');
+        if (!btn) return;
+        var block = btn.closest('.question-block');
+        if (container.querySelectorAll('.question-block').length <= 1) return;
+        block.remove();
+        updateUI();
+    });
+
+    updateUI();
+})();
+</script>
+{% endblock %}
