@@ -8,6 +8,7 @@ from flask_mysqldb import MySQL
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from functools import wraps
 import os
+import re
 import base64
 import json
 import io
@@ -156,6 +157,22 @@ def register():
         full_name = request.form.get('full_name')
         
         # Validation
+        if not re.match(r'^[A-Za-z\s]+$', full_name):
+            flash('Full name can only contain letters and spaces.', 'error')
+            return render_template('register.html')
+        
+        if ' ' in username:
+            flash('Username cannot contain spaces.', 'error')
+            return render_template('register.html')
+        
+        if username[0].isdigit():
+            flash('Username cannot start with a number.', 'error')
+            return render_template('register.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('register.html')
+        
         if password != confirm_password:
             flash('Passwords do not match.', 'error')
             return render_template('register.html')

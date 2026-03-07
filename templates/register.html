@@ -28,6 +28,8 @@
                         name="full_name" 
                         class="form-control" 
                         placeholder="Enter your full name"
+                        pattern="[A-Za-z\s]+"
+                        title="Full name can only contain letters and spaces"
                         required
                     >
                 </div>
@@ -40,6 +42,8 @@
                         name="username" 
                         class="form-control" 
                         placeholder="Choose a username"
+                        pattern="^[A-Za-z_][A-Za-z0-9_]*$"
+                        title="Username cannot contain spaces or start with a number"
                         required
                     >
                 </div>
@@ -65,7 +69,7 @@
                         class="form-control" 
                         placeholder="Create a password"
                         required
-                        minlength="4"
+                        minlength="6"
                     >
                 </div>
                 
@@ -105,11 +109,36 @@
 
 {% block scripts %}
 <script>
-    // Password confirmation validation
     document.querySelector('form').addEventListener('submit', function(e) {
+        const fullName = document.getElementById('full_name').value;
+        const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
-        
+
+        if (!/^[A-Za-z\s]+$/.test(fullName)) {
+            e.preventDefault();
+            alert('Full name can only contain letters and spaces (no numbers or special characters).');
+            return;
+        }
+
+        if (/\s/.test(username)) {
+            e.preventDefault();
+            alert('Username cannot contain spaces.');
+            return;
+        }
+
+        if (/^\d/.test(username)) {
+            e.preventDefault();
+            alert('Username cannot start with a number.');
+            return;
+        }
+
+        if (password.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
         if (password !== confirmPassword) {
             e.preventDefault();
             alert('Passwords do not match!');
