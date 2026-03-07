@@ -207,10 +207,13 @@
         }, 10000); // Check every 10 seconds
     }
     
+    let examTerminated = false;
+
     // Log proctoring event (shows notification to user and notifies admin via alerts API)
     async function logEvent(eventType, description) {
+        if (examTerminated) return;
         try {
-            await fetch('/api/log_event', {
+            const response = await fetch('/api/log_event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -219,7 +222,13 @@
                     description: description 
                 })
             });
-            // Notify user that an issue was recorded and admin is notified
+            const result = await response.json();
+
+            if (result.terminated) {
+                terminateExam();
+                return;
+            }
+
             if (typeof window.showProctoringToast === 'function') {
                 var severity = (eventType === 'face_mismatch' || eventType === 'multiple_faces') ? 'critical' : 'warning';
                 window.showProctoringToast('An issue has been recorded. The administrator has been notified.', severity);
@@ -228,9 +237,50 @@
             console.error('Failed to log event:', err);
         }
     }
+
+    function terminateExam() {
+        if (examTerminated) return;
+        examTerminated = true;
+
+        clearInterval(timerInterval);
+        clearInterval(faceCheckInterval);
+
+        // Stop webcam
+        const video = document.getElementById('webcam');
+        if (video && video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
+
+        // Disable the exam form
+        document.querySelectorAll('#examForm input, #examForm button').forEach(el => el.disabled = true);
+
+        // Remove the beforeunload guard so the redirect goes through
+        window.onbeforeunload = null;
+
+        // Show termination overlay
+        const modal = document.getElementById('resultModal');
+        const content = document.getElementById('resultContent');
+        content.innerHTML = `
+            <div style="font-size: 4rem; margin-bottom: 1rem;">&#9888;</div>
+            <h2 style="color: var(--danger-color, #ef4444); margin-bottom: 0.5rem;">Exam Terminated</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">
+                Your exam has been terminated due to excessive warnings.
+            </p>
+            <p style="color: var(--text-secondary);">
+                You will be redirected to the dashboard shortly.
+            </p>
+        `;
+        modal.style.display = 'flex';
+
+        setTimeout(() => {
+            window.location.href = '{{ url_for("user_dashboard") }}';
+        }, 4000);
+    }
     
     // Show warning (banner + log event; notification to admin is sent via logEvent)
     function showWarning(message) {
+        if (examTerminated) return;
+
         warningCount++;
         const banner = document.getElementById('warningBanner');
         document.getElementById('warningMessage').textContent = message;
@@ -238,11 +288,8 @@
         banner.style.display = 'flex';
         
         if (warningCount >= maxWarnings) {
-            if (typeof window.showProctoringToast === 'function') {
-                window.showProctoringToast('Maximum warnings reached. Your exam has been terminated.', 'critical');
-            }
-            alert('Maximum warnings reached. Your exam has been terminated.');
-            window.location.href = '{{ url_for("user_dashboard") }}';
+            terminateExam();
+            return;
         }
         
         setTimeout(() => {

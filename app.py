@@ -276,6 +276,19 @@ def take_exam(exam_id):
         cur.close()
         return redirect(url_for('user_dashboard'))
     
+    # Block re-entry if a session was already terminated for this exam
+    cur.execute("""
+        SELECT * FROM exam_sessions
+        WHERE user_id = %s AND exam_id = %s AND status = 'terminated'
+        ORDER BY created_at DESC LIMIT 1
+    """, (current_user.id, exam_id))
+    terminated_session = cur.fetchone()
+
+    if terminated_session:
+        flash('You cannot retake this exam. Your previous session was terminated due to violations.', 'error')
+        cur.close()
+        return redirect(url_for('user_dashboard'))
+
     # Check for existing in-progress session
     cur.execute("""
         SELECT * FROM exam_sessions 
@@ -532,6 +545,7 @@ def log_proctoring_event():
     """, (session_id, current_user.id, event_type, severity, description))
     
     # Update warning count
+    terminated = False
     if severity in ['warning', 'critical']:
         cur.execute("""
             UPDATE exam_sessions SET warning_count = warning_count + 1 WHERE id = %s
@@ -542,7 +556,7 @@ def log_proctoring_event():
         session_data = cur.fetchone()
         
         if session_data and session_data['warning_count'] >= 3:
-            # Terminate exam
+            terminated = True
             cur.execute("""
                 UPDATE exam_sessions SET status = 'terminated', end_time = NOW() WHERE id = %s
             """, (session_id,))
@@ -554,7 +568,7 @@ def log_proctoring_event():
     mysql.connection.commit()
     cur.close()
     
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'terminated': terminated})
 
 
 # =============================================
