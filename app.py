@@ -348,6 +348,8 @@ def submit_exam():
     if not session_data:
         return jsonify({'success': False, 'message': 'Invalid session'})
     
+    already_terminated = session_data['status'] == 'terminated'
+    
     # Calculate score
     total_score = 0
     correct_count = 0
@@ -372,19 +374,25 @@ def submit_exam():
                 ON DUPLICATE KEY UPDATE selected_option = %s, is_correct = %s
             """, (session_id, question_id, selected_option, is_correct, selected_option, is_correct))
     
-    # Update session
-    status = 'completed'
+    # Preserve 'terminated' status if session was already terminated; otherwise mark completed
+    status = 'terminated' if already_terminated else 'completed'
     cur.execute("""
         UPDATE exam_sessions 
         SET status = %s, score = %s, total_questions = %s, correct_answers = %s, end_time = NOW()
         WHERE id = %s
     """, (status, total_score, total_questions, correct_count, session_id))
     
-    # Log exam completion
-    cur.execute("""
-        INSERT INTO proctoring_logs (session_id, user_id, event_type, severity, description)
-        VALUES (%s, %s, 'exam_completed', 'info', %s)
-    """, (session_id, current_user.id, f'Exam completed with score {total_score}'))
+    # Log appropriately
+    if already_terminated:
+        cur.execute("""
+            INSERT INTO proctoring_logs (session_id, user_id, event_type, severity, description)
+            VALUES (%s, %s, 'exam_auto_submitted', 'info', %s)
+        """, (session_id, current_user.id, f'Answers auto-saved on termination with score {total_score}'))
+    else:
+        cur.execute("""
+            INSERT INTO proctoring_logs (session_id, user_id, event_type, severity, description)
+            VALUES (%s, %s, 'exam_completed', 'info', %s)
+        """, (session_id, current_user.id, f'Exam completed with score {total_score}'))
     
     mysql.connection.commit()
     cur.close()

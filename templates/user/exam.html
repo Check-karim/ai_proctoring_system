@@ -273,7 +273,26 @@
         // Remove the beforeunload guard so the redirect goes through
         window.onbeforeunload = null;
 
-        // Show termination overlay
+        // Auto-submit whatever answers the student has selected so far
+        const formData = new FormData(document.getElementById('examForm'));
+        const answers = {};
+        for (let [key, value] of formData.entries()) {
+            if (key.startsWith('q_')) {
+                answers[key.replace('q_', '')] = value;
+            }
+        }
+
+        fetch('/submit_exam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, answers: answers })
+        }).catch(() => {}).finally(() => {
+            setTimeout(() => {
+                window.location.href = '{{ url_for("user_dashboard") }}';
+            }, 4000);
+        });
+
+        // Show termination overlay immediately
         const modal = document.getElementById('resultModal');
         const content = document.getElementById('resultContent');
         content.innerHTML = `
@@ -283,14 +302,10 @@
                 Your exam has been terminated due to excessive warnings.
             </p>
             <p style="color: var(--text-secondary);">
-                You will be redirected to the dashboard shortly.
+                Your answers have been saved. You will be redirected to the dashboard shortly.
             </p>
         `;
         modal.style.display = 'flex';
-
-        setTimeout(() => {
-            window.location.href = '{{ url_for("user_dashboard") }}';
-        }, 4000);
     }
     
     // Show warning (banner + log event; notification to admin is sent via logEvent)
