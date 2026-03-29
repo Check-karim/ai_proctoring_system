@@ -9,7 +9,7 @@ alwaysApply: true
 - **Backend**: Python Flask 3.0
 - **Database**: MySQL with Flask-MySQLdb
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **AI/ML**: face-recognition library, OpenCV
+- **AI/ML**: face-recognition library, OpenCV, dlib, numpy, Pillow
 
 ## Code Conventions
 
@@ -33,13 +33,20 @@ alwaysApply: true
 - MySQL database named `ai_proctoring`
 - Plain text passwords (demo only)
 - Tables: users, exams, exam_sessions, proctoring_logs
+- `face_encoding` column stores a JSON array of 128 floats (face_recognition encoding)
 
 ## User Roles
 1. **Admin**: username `admin`, password `admin`
 2. **User**: Self-registration required
 
+## Face Recognition
+- Registration requires exactly one detected face; capture button is disabled until `/api/detect_face` confirms a face
+- Face encoding: 128-dimensional vector computed by `face_recognition.face_encodings()`, stored as JSON in the `face_encoding` column
+- Exam verification: `/api/verify_face` compares the live frame against the stored encoding with `tolerance=0.45` (stricter than default 0.6)
+- Escalation: multiple_faces → immediate warning; face_mismatch → 2 consecutive failures; face_not_detected → 3 consecutive failures; all feed into the standard warning system (3 warnings → termination)
+
 ## Key Features
-- Facial recognition for identity verification
+- Real face detection and comparison using `face_recognition` library (dlib HOG model)
 - Real-time exam monitoring (live monitor polls every 5s and refreshes the session table)
-- Notifications when AI suspects something: both admin and user receive on-screen toasts when a warning/critical proctoring event is logged (tab switch, window blur, face issues, etc.); user sees “An issue has been recorded. The administrator has been notified.”; admin sees student name, exam, and incident description
+- Notifications when AI suspects something: both admin and user receive on-screen toasts when a warning/critical proctoring event is logged (tab switch, window blur, face issues, etc.); user sees "An issue has been recorded. The administrator has been notified."; admin sees student name, exam, and incident description
 - Analytics and reporting dashboard

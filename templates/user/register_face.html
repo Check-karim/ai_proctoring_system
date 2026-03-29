@@ -14,9 +14,12 @@
         
         <div class="card" style="text-align: center;">
             <div style="margin-bottom: 2rem;">
-                <div style="position: relative; display: inline-block; border-radius: var(--border-radius-lg); overflow: hidden; border: 3px solid var(--primary-color);">
+                <div style="position: relative; display: inline-block; border-radius: var(--border-radius-lg); overflow: hidden; border: 3px solid var(--primary-color); transition: border-color 0.3s;" id="videoFrame">
                     <video id="webcam" autoplay playsinline muted style="width: 100%; max-width: 480px; display: block;"></video>
                     <canvas id="captureCanvas" style="display: none;"></canvas>
+                    <div id="faceDetectionStatus" style="position: absolute; bottom: 0; left: 0; right: 0; padding: 0.5rem; background: rgba(0,0,0,0.7); color: #fbbf24; font-size: 0.875rem; text-align: center; transition: all 0.3s;">
+                        Detecting face...
+                    </div>
                 </div>
             </div>
             
@@ -75,7 +78,9 @@
 <script>
     let stream;
     let capturedImage = null;
-    
+    let faceDetected = false;
+    let detectInterval = null;
+
     const video = document.getElementById('webcam');
     const canvas = document.getElementById('captureCanvas');
     const preview = document.getElementById('previewImage');
@@ -84,75 +89,127 @@
     const retakeBtn = document.getElementById('retakeBtn');
     const saveBtn = document.getElementById('saveBtn');
     const messageBox = document.getElementById('messageBox');
-    
-    // Initialize webcam
+    const videoFrame = document.getElementById('videoFrame');
+    const faceStatus = document.getElementById('faceDetectionStatus');
+
+    captureBtn.disabled = true;
+
     async function initWebcam() {
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'user', width: 640, height: 480 } 
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: 640, height: 480 }
             });
             video.srcObject = stream;
+            video.addEventListener('loadeddata', () => {
+                startFaceDetection();
+            });
         } catch (err) {
             showMessage('Camera access denied. Please allow camera access.', 'error');
-            console.error('Webcam error:', err);
         }
     }
-    
-    // Capture photo
-    function capturePhoto() {
+
+    function getVideoFrame() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
-        
-        capturedImage = canvas.toDataURL('image/jpeg', 0.9);
+        return canvas.toDataURL('image/jpeg', 0.6);
+    }
+
+    function startFaceDetection() {
+        checkFace();
+        detectInterval = setInterval(checkFace, 2000);
+    }
+
+    async function checkFace() {
+        if (capturedImage) return;
+        const frame = getVideoFrame();
+        try {
+            const response = await fetch('/api/detect_face', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: frame })
+            });
+            const result = await response.json();
+
+            faceDetected = result.detected;
+
+            if (result.detected) {
+                faceStatus.textContent = '✓ Face detected — ready to capture';
+                faceStatus.style.color = '#4ade80';
+                videoFrame.style.borderColor = 'var(--success-color, #22c55e)';
+                captureBtn.disabled = false;
+            } else if (result.count > 1) {
+                faceStatus.textContent = '✗ Multiple faces detected — only one face allowed';
+                faceStatus.style.color = '#f87171';
+                videoFrame.style.borderColor = 'var(--danger-color, #ef4444)';
+                captureBtn.disabled = true;
+            } else {
+                faceStatus.textContent = '✗ No face detected — position your face in the frame';
+                faceStatus.style.color = '#fbbf24';
+                videoFrame.style.borderColor = 'var(--warning-color, #f59e0b)';
+                captureBtn.disabled = true;
+            }
+        } catch (err) {
+            console.error('Face detection error:', err);
+        }
+    }
+
+    function capturePhoto() {
+        if (!faceDetected) {
+            showMessage('No face detected. Please position your face in the frame.', 'error');
+            return;
+        }
+
+        capturedImage = getVideoFrame();
         preview.src = capturedImage;
-        
-        // Update UI
+
+        if (detectInterval) clearInterval(detectInterval);
         video.style.display = 'none';
+        faceStatus.style.display = 'none';
         previewContainer.style.display = 'block';
         captureBtn.style.display = 'none';
         retakeBtn.style.display = 'inline-flex';
         saveBtn.style.display = 'inline-flex';
     }
-    
-    // Retake photo
+
     function retakePhoto() {
         capturedImage = null;
         video.style.display = 'block';
+        faceStatus.style.display = 'block';
         previewContainer.style.display = 'none';
         captureBtn.style.display = 'inline-flex';
         retakeBtn.style.display = 'none';
         saveBtn.style.display = 'none';
         hideMessage();
+        startFaceDetection();
     }
-    
-    // Save face
+
     async function saveFace() {
         if (!capturedImage) {
             showMessage('Please capture a photo first.', 'error');
             return;
         }
-        
+
         saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
-        
+        saveBtn.textContent = 'Analyzing face...';
+
         try {
             const response = await fetch('{{ url_for("register_face") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: capturedImage })
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 showMessage('Face registered successfully! Redirecting...', 'success');
                 setTimeout(() => {
                     window.location.href = '{{ url_for("user_dashboard") }}';
                 }, 2000);
             } else {
-                showMessage(result.message || 'Failed to register face.', 'error');
+                showMessage(result.message || 'Failed to register face. Please retake.', 'error');
                 saveBtn.disabled = false;
                 saveBtn.textContent = 'Save Face';
             }
@@ -160,28 +217,23 @@
             showMessage('An error occurred. Please try again.', 'error');
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Face';
-            console.error('Save error:', err);
         }
     }
-    
-    // Show message
+
     function showMessage(message, type) {
         messageBox.className = `alert alert-${type}`;
         messageBox.textContent = message;
         messageBox.style.display = 'block';
     }
-    
-    // Hide message
+
     function hideMessage() {
         messageBox.style.display = 'none';
     }
-    
-    // Event listeners
+
     captureBtn.addEventListener('click', capturePhoto);
     retakeBtn.addEventListener('click', retakePhoto);
     saveBtn.addEventListener('click', saveFace);
-    
-    // Initialize on load
+
     document.addEventListener('DOMContentLoaded', initWebcam);
 </script>
 {% endblock %}

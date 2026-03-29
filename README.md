@@ -6,7 +6,8 @@ An intelligent web-based proctoring system built with Python Flask and MySQL tha
 
 ### For Students (Users)
 - **User Registration & Login**: Secure authentication system
-- **Face Registration**: Register facial data for identity verification
+- **Face Registration**: Register facial data for identity verification; the system requires exactly one face to be detected before allowing capture, and computes a 128-point face encoding stored in the database
+- **Real-time Face Detection**: Live face detection indicator on the registration page — capture button is disabled until a face is detected
 - **Online Examinations**: Take exams with real-time AI proctoring
 - **Real-time Alerts**: Receive warnings for suspicious activities
 - **Issue Notifications**: When the AI suspects something during the exam (e.g. tab switch, focus lost), both the student and the administrator are notified via on-screen notifications; the student sees that an issue was recorded and the admin was notified
@@ -133,10 +134,18 @@ AI proctoring/
 └── README.md
 ```
 
+## Face Recognition Details
+
+- **Registration**: Uses the `face_recognition` library (dlib HOG model) to detect exactly one face and compute a 128-dimensional encoding stored as JSON in the database
+- **Real-time detection**: The registration page polls `/api/detect_face` every 2 seconds; the capture button stays disabled until a single face is confirmed
+- **Exam verification**: During exams, the webcam captures a frame every 10 seconds and compares it against the stored encoding using `face_recognition.compare_faces()` with a strict tolerance of **0.45** (lower than the default 0.6)
+- **Escalation thresholds**: Multiple faces triggers an immediate warning; face mismatch triggers after 2 consecutive failures (20s); no face triggers after 3 consecutive failures (30s)
+- **Warning system**: Face violations feed into the same warning system as tab switches — 3 warnings terminate the exam
+
 ## Key Objectives Achieved
 
 1. **User-Friendly Interface**: Modern, responsive design with intuitive navigation
-2. **Facial Recognition**: AI-powered identity verification during exams
+2. **Facial Recognition**: AI-powered identity verification during exams with real face encoding comparison (tolerance 0.45)
 3. **Analytics & Reports**: Comprehensive insights and statistical reports
 
 ## Security Note

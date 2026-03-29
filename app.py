@@ -14,6 +14,9 @@ import json
 import io
 from io import BytesIO
 from datetime import datetime, timedelta
+import numpy as np
+import face_recognition
+from PIL import Image
 from config import config
 
 # Initialize Flask app
@@ -435,82 +438,140 @@ def register_face():
     if request.method == 'POST':
         data = request.get_json()
         image_data = data.get('image')
-        
-        if image_data:
-            try:
-                # Decode base64 image
-                image_data = image_data.split(',')[1]
-                image_bytes = base64.b64decode(image_data)
-                
-                # Save image
-                filename = f"user_{current_user.id}_face.jpg"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                
-                with open(filepath, 'wb') as f:
-                    f.write(image_bytes)
-                
-                # Try to encode face (simplified - in production use face_recognition library)
-                # For demo, we just store the image path
-                cur = mysql.connection.cursor()
-                cur.execute("""
-                    UPDATE users SET face_encoding = %s, profile_image = %s WHERE id = %s
-                """, (filename, filename, current_user.id))
-                mysql.connection.commit()
-                cur.close()
-                
-                return jsonify({'success': True, 'message': 'Face registered successfully!'})
-            except Exception as e:
-                return jsonify({'success': False, 'message': str(e)})
-        
-        return jsonify({'success': False, 'message': 'No image data received'})
-    
+
+        if not image_data:
+            return jsonify({'success': False, 'message': 'No image data received'})
+
+        try:
+            image_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+            image_bytes = base64.b64decode(image_b64)
+
+            image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            image_array = np.array(image)
+
+            face_locations = face_recognition.face_locations(image_array, model='hog')
+
+            if len(face_locations) == 0:
+                return jsonify({'success': False, 'message': 'No face detected. Please ensure your face is clearly visible and try again.'})
+
+            if len(face_locations) > 1:
+                return jsonify({'success': False, 'message': 'Multiple faces detected. Please ensure only your face is in the frame.'})
+
+            encodings = face_recognition.face_encodings(image_array, face_locations)
+
+            if len(encodings) == 0:
+                return jsonify({'success': False, 'message': 'Could not encode face. Please try again with better lighting.'})
+
+            encoding_str = json.dumps(encodings[0].tolist())
+
+            filename = f"user_{current_user.id}_face.jpg"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+            with open(filepath, 'wb') as f:
+                f.write(image_bytes)
+
+            cur = mysql.connection.cursor()
+            cur.execute("""
+                UPDATE users SET face_encoding = %s, profile_image = %s WHERE id = %s
+            """, (encoding_str, filename, current_user.id))
+            mysql.connection.commit()
+            cur.close()
+
+            return jsonify({'success': True, 'message': 'Face registered successfully!'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)})
+
     return render_template('user/register_face.html')
 
 
 # =============================================
 # Proctoring API Routes
 # =============================================
+@app.route('/api/detect_face', methods=['POST'])
+@login_required
+def detect_face():
+    """Check if a face is present in the provided image (used by face registration page)"""
+    data = request.get_json()
+    image_data = data.get('image')
+
+    if not image_data:
+        return jsonify({'detected': False, 'count': 0, 'message': 'No image data'})
+
+    try:
+        image_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+        image_bytes = base64.b64decode(image_b64)
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+
+        small = np.array(image.resize((image.width // 2, image.height // 2)))
+        face_locations = face_recognition.face_locations(small, model='hog')
+
+        count = len(face_locations)
+        if count == 1:
+            msg = 'Face detected'
+        elif count > 1:
+            msg = 'Multiple faces detected'
+        else:
+            msg = 'No face detected'
+
+        return jsonify({'detected': count == 1, 'count': count, 'message': msg})
+    except Exception as e:
+        return jsonify({'detected': False, 'count': 0, 'message': str(e)})
+
+
 @app.route('/api/verify_face', methods=['POST'])
 @login_required
 def verify_face():
-    """Verify user's face during exam"""
+    """Verify user's face during exam using real face comparison"""
     data = request.get_json()
-    session_id = data.get('session_id')
     image_data = data.get('image')
-    
-    if not image_data or not session_id:
-        return jsonify({'verified': False, 'message': 'Missing data'})
-    
+
+    if not image_data:
+        return jsonify({'verified': False, 'message': 'No image data', 'event_type': 'face_not_detected'})
+
     try:
-        # In production, compare with stored face encoding using face_recognition library
-        # For demo, we simulate face verification
-        
-        cur = mysql.connection.cursor()
-        
-        # Check if user has registered face
-        if current_user.face_encoding:
-            # Simulate verification (in production, use actual face comparison)
-            verified = True
-            event_type = 'face_detected'
-            severity = 'info'
-            description = 'Face verified successfully'
+        if not current_user.face_encoding:
+            return jsonify({'verified': False, 'message': 'No registered face to compare', 'event_type': 'face_not_detected'})
+
+        try:
+            stored_encoding = np.array(json.loads(current_user.face_encoding))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return jsonify({'verified': False, 'message': 'Invalid face data. Please re-register your face.', 'event_type': 'face_not_detected'})
+
+        image_b64 = image_data.split(',')[1] if ',' in image_data else image_data
+        image_bytes = base64.b64decode(image_b64)
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        image_array = np.array(image)
+
+        face_locations = face_recognition.face_locations(image_array, model='hog')
+
+        if len(face_locations) == 0:
+            return jsonify({'verified': False, 'message': 'No face detected in webcam', 'event_type': 'face_not_detected'})
+
+        if len(face_locations) > 1:
+            return jsonify({'verified': False, 'message': f'{len(face_locations)} faces detected', 'event_type': 'multiple_faces'})
+
+        encodings = face_recognition.face_encodings(image_array, face_locations)
+
+        if len(encodings) == 0:
+            return jsonify({'verified': False, 'message': 'Could not process face', 'event_type': 'face_not_detected'})
+
+        match = face_recognition.compare_faces([stored_encoding], encodings[0], tolerance=0.45)
+        distance = face_recognition.face_distance([stored_encoding], encodings[0])[0]
+
+        if match[0]:
+            return jsonify({
+                'verified': True,
+                'message': f'Face verified (confidence: {(1 - distance) * 100:.0f}%)',
+                'event_type': 'face_detected'
+            })
         else:
-            verified = False
-            event_type = 'face_not_detected'
-            severity = 'warning'
-            description = 'No registered face to compare'
-        
-        # Log the event
-        cur.execute("""
-            INSERT INTO proctoring_logs (session_id, user_id, event_type, severity, description)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (session_id, current_user.id, event_type, severity, description))
-        mysql.connection.commit()
-        cur.close()
-        
-        return jsonify({'verified': verified, 'message': description})
+            return jsonify({
+                'verified': False,
+                'message': 'Face does not match registered user',
+                'event_type': 'face_mismatch'
+            })
     except Exception as e:
-        return jsonify({'verified': False, 'message': str(e)})
+        return jsonify({'verified': False, 'message': f'Verification error: {str(e)}', 'event_type': 'face_not_detected'})
 
 
 @app.route('/api/log_event', methods=['POST'])

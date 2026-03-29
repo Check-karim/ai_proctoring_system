@@ -180,31 +180,47 @@
         return canvas.toDataURL('image/jpeg', 0.8);
     }
     
-    // Start face verification checks
+    let consecutiveFaceFailures = 0;
+
     function startFaceCheck() {
         faceCheckInterval = setInterval(async () => {
+            if (examTerminated) return;
+
             const imageData = captureFrame();
-            
+
             try {
                 const response = await fetch('/api/verify_face', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: sessionId, image: imageData })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.verified) {
-                    document.getElementById('faceStatus').textContent = 'Face verified';
+                    consecutiveFaceFailures = 0;
+                    document.getElementById('faceStatus').textContent = result.message || 'Face verified';
                     document.getElementById('webcamContainer').style.borderColor = 'var(--success-color)';
                 } else {
-                    document.getElementById('faceStatus').textContent = 'Face not verified';
-                    document.getElementById('webcamContainer').style.borderColor = 'var(--warning-color)';
+                    consecutiveFaceFailures++;
+                    const isDanger = result.event_type === 'face_mismatch' || result.event_type === 'multiple_faces';
+                    document.getElementById('faceStatus').textContent = result.message || 'Face not verified';
+                    document.getElementById('webcamContainer').style.borderColor = isDanger ? 'var(--danger-color, #ef4444)' : 'var(--warning-color)';
+
+                    let threshold = 3;
+                    if (result.event_type === 'face_mismatch') threshold = 2;
+                    if (result.event_type === 'multiple_faces') threshold = 1;
+
+                    if (consecutiveFaceFailures >= threshold) {
+                        logEvent(result.event_type || 'face_not_detected', result.message || 'Face verification failed');
+                        showWarning(result.message || 'Face verification failed');
+                        consecutiveFaceFailures = 0;
+                    }
                 }
             } catch (err) {
                 console.error('Face verification error:', err);
             }
-        }, 10000); // Check every 10 seconds
+        }, 10000);
     }
     
     let examTerminated = false;
